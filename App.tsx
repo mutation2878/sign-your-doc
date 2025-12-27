@@ -27,8 +27,16 @@ const App: React.FC = () => {
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
+    // 重要：確保畫布尺寸與圖片一致
+    if (canvas.width !== baseImage.width || canvas.height !== baseImage.height) {
+      canvas.width = baseImage.width;
+      canvas.height = baseImage.height;
+    }
+
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-    ctx.drawImage(baseImage, 0, 0);
+    
+    // 使用明確的寬高繪製底圖，避免偏移
+    ctx.drawImage(baseImage, 0, 0, canvas.width, canvas.height);
 
     // AI Suggestions
     if (analysis && analysis.suggestedPlacements.length > 0) {
@@ -38,26 +46,33 @@ const App: React.FC = () => {
         ctx.fillStyle = 'rgba(59, 130, 246, 0.2)';
         ctx.fill();
         ctx.strokeStyle = '#3b82f6';
-        ctx.lineWidth = 2;
-        ctx.setLineDash([5, 5]);
+        ctx.lineWidth = 4;
+        ctx.setLineDash([8, 8]);
         ctx.stroke();
         ctx.setLineDash([]);
       });
     }
 
+    // 繪製簽名
     overlays.forEach(ov => {
       const w = ov.image.width * ov.scale;
       const h = ov.image.height * ov.scale;
+      
       if (ov.id === selectedId) {
         ctx.strokeStyle = '#3b82f6';
-        ctx.lineWidth = 4;
+        ctx.lineWidth = Math.max(2, 4 * (canvas.width / 1000)); // 根據畫布比例調整線條粗細
         ctx.strokeRect(ov.x - 2, ov.y - 2, w + 4, h + 4);
       }
+      
       ctx.drawImage(ov.image, ov.x, ov.y, w, h);
     });
   }, [baseImage, overlays, selectedId, analysis]);
 
-  useEffect(() => { draw(); }, [draw]);
+  useEffect(() => { 
+    // 使用 requestAnimationFrame 確保在 DOM 更新後繪圖
+    const handle = requestAnimationFrame(draw);
+    return () => cancelAnimationFrame(handle);
+  }, [draw]);
 
   const handleBaseImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -67,10 +82,6 @@ const App: React.FC = () => {
       const img = new Image();
       img.onload = () => {
         setBaseImage(img);
-        if (canvasRef.current) {
-          canvasRef.current.width = img.width;
-          canvasRef.current.height = img.height;
-        }
         setOverlays([]);
         setAnalysis(null);
       };
@@ -93,8 +104,8 @@ const App: React.FC = () => {
         const newOverlay: Overlay = {
           id: Math.random().toString(36).substr(2, 9),
           image: img,
-          x: 50,
-          y: 50,
+          x: (baseImage.width / 2) - (img.width / 2),
+          y: (baseImage.height / 2) - (img.height / 2),
           scale: 1,
           name: file.name
         };
@@ -131,9 +142,15 @@ const App: React.FC = () => {
     const rect = canvas.getBoundingClientRect();
     const clientX = 'touches' in e ? e.touches[0].clientX : (e as React.MouseEvent).clientX;
     const clientY = 'touches' in e ? e.touches[0].clientY : (e as React.MouseEvent).clientY;
+    
+    // 計算 CSS 縮放後的正確比例
     const scaleX = canvas.width / rect.width;
     const scaleY = canvas.height / rect.height;
-    return { x: (clientX - rect.left) * scaleX, y: (clientY - rect.top) * scaleY };
+    
+    return { 
+      x: (clientX - rect.left) * scaleX, 
+      y: (clientY - rect.top) * scaleY 
+    };
   };
 
   const onStart = (e: React.MouseEvent | React.TouchEvent) => {
@@ -182,7 +199,7 @@ const App: React.FC = () => {
   const selectedOverlay = overlays.find(o => o.id === selectedId);
 
   return (
-    <div className="min-h-screen bg-[#f0f4f8] p-4 flex flex-col items-center">
+    <div className="min-h-screen bg-[#f0f4f8] p-4 flex flex-col items-center overflow-x-hidden">
       <div className="w-full max-w-6xl bg-white rounded-2xl shadow-xl p-8 flex flex-col">
         {/* Header */}
         <div className="text-center mb-8">
@@ -225,11 +242,10 @@ const App: React.FC = () => {
 
         {/* Workspace */}
         <div className="flex flex-col lg:flex-row gap-8 flex-1">
-          {/* Main Area */}
           <div className="flex-1 flex flex-col items-center">
-            <div className="w-full bg-[#e2e8f0] rounded-xl overflow-hidden shadow-inner flex items-center justify-center min-h-[300px] border-2 border-dashed border-[#9ca3af]">
+            <div className="w-full bg-[#e2e8f0] rounded-xl overflow-auto shadow-inner flex items-center justify-center min-h-[400px] border-2 border-dashed border-[#9ca3af] p-4">
               {baseImage ? (
-                <div className="relative">
+                <div className="relative shadow-lg bg-white leading-[0]">
                   <canvas
                     ref={canvasRef}
                     onMouseDown={onStart}
@@ -240,26 +256,26 @@ const App: React.FC = () => {
                     onTouchMove={onMove}
                     onTouchEnd={onEnd}
                     className={`max-w-full block touch-none ${isDragging ? 'cursor-grabbing' : selectedId ? 'cursor-grab' : 'cursor-default'}`}
-                    style={{ height: 'auto', maxHeight: '65vh' }}
+                    style={{ height: 'auto', maxHeight: '70vh', objectFit: 'contain' }}
                   />
                 </div>
               ) : (
                 <div className="text-center p-12">
-                  <p className="text-[#94a3b8] font-medium">尚未上傳文件</p>
+                  <div className="text-6xl mb-4 opacity-20">📄</div>
+                  <p className="text-[#94a3b8] font-medium">尚未上傳文件，請點選上方按鈕開始</p>
                 </div>
               )}
             </div>
 
-            {/* AI Result Banner */}
             {analysis && (
-              <div className="mt-4 w-full p-4 bg-blue-50 border border-blue-100 rounded-xl flex items-start gap-3">
+              <div className="mt-4 w-full p-4 bg-blue-50 border border-blue-100 rounded-xl flex items-start gap-3 animate-in fade-in slide-in-from-bottom-2 duration-300">
                 <div className="mt-1 text-blue-500"><IconSparkles /></div>
                 <div>
                   <p className="text-sm font-semibold text-blue-800">AI 文件分析結果：</p>
                   <p className="text-sm text-blue-700">{analysis.description}</p>
                   {analysis.suggestedPlacements.length > 0 && (
-                    <p className="text-xs font-bold text-blue-400 mt-1">
-                      已在預覽圖中標註 {analysis.suggestedPlacements.length} 個建議區域
+                    <p className="text-xs font-bold text-blue-400 mt-1 uppercase tracking-wider">
+                      ★ 已在預覽圖中標註 {analysis.suggestedPlacements.length} 個建議區域
                     </p>
                   )}
                 </div>
@@ -267,26 +283,28 @@ const App: React.FC = () => {
             )}
           </div>
 
-          {/* Sidebar Area: Signature List */}
           {overlays.length > 0 && (
             <div className="w-full lg:w-72 flex flex-col gap-4">
-              <h3 className="text-sm font-bold text-[#64748b] uppercase tracking-wider">簽名清單</h3>
-              <div className="flex-1 overflow-y-auto max-h-[400px] pr-2 space-y-3">
+              <h3 className="text-sm font-bold text-[#64748b] uppercase tracking-wider">已加入簽名 ({overlays.length})</h3>
+              <div className="flex-1 overflow-y-auto max-h-[450px] pr-2 space-y-3">
                 {overlays.map((ov, index) => (
                   <div 
                     key={ov.id}
                     onClick={() => setSelectedId(ov.id)}
-                    className={`p-3 rounded-xl border transition-all cursor-pointer flex items-center justify-between ${selectedId === ov.id ? 'border-blue-500 bg-blue-50 ring-2 ring-blue-200' : 'border-[#e2e8f0] bg-white'}`}
+                    className={`p-3 rounded-xl border transition-all cursor-pointer flex items-center justify-between group ${selectedId === ov.id ? 'border-blue-500 bg-blue-50 ring-2 ring-blue-200' : 'border-[#e2e8f0] bg-white hover:border-slate-300'}`}
                   >
                     <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 bg-white border border-[#e2e8f0] rounded-lg p-1 flex items-center justify-center">
+                      <div className="w-12 h-12 bg-white border border-[#e2e8f0] rounded-lg p-1 flex items-center justify-center">
                         <img src={ov.image.src} className="max-w-full max-h-full object-contain" alt="" />
                       </div>
-                      <span className="text-sm font-medium text-[#1e293b]">簽名 #{index + 1}</span>
+                      <div className="flex flex-col">
+                        <span className="text-sm font-bold text-[#1e293b]">簽名 #{index + 1}</span>
+                        <span className="text-[10px] text-slate-400 truncate max-w-[100px]">{ov.name}</span>
+                      </div>
                     </div>
                     <button 
                       onClick={(e) => { e.stopPropagation(); deleteOverlay(ov.id); }}
-                      className="p-1.5 text-[#94a3b8] hover:text-red-500 transition-colors"
+                      className="p-1.5 text-[#94a3b8] hover:text-red-500 transition-colors opacity-0 group-hover:opacity-100"
                     >
                       <IconTrash />
                     </button>
@@ -303,8 +321,8 @@ const App: React.FC = () => {
             <span className="text-[#64748b] font-medium whitespace-nowrap">大小：</span>
             <input 
               type="range" 
-              min="0.1" 
-              max="2.5" 
+              min="0.05" 
+              max="3.0" 
               step="0.01" 
               disabled={!selectedId}
               value={selectedOverlay?.scale || 1} 
@@ -314,13 +332,13 @@ const App: React.FC = () => {
               }}
               className="flex-1 h-2 bg-[#e2e8f0] rounded-lg appearance-none cursor-pointer accent-[#22c55e] disabled:opacity-50"
             />
-            <span className="text-sm font-bold text-[#1e293b] min-w-[40px]">
-              {selectedOverlay ? `${Math.round(selectedOverlay.scale * 100)}%` : '1x'}
+            <span className="text-sm font-bold text-[#1e293b] min-w-[50px] text-right">
+              {selectedOverlay ? `${Math.round(selectedOverlay.scale * 100)}%` : '100%'}
             </span>
           </div>
 
           <Button 
-            className="bg-[#22c55e] hover:bg-[#16a34a] text-white px-8 py-3 rounded-full shadow-lg shadow-green-100 transform active:scale-95 transition-all font-bold"
+            className="bg-[#22c55e] hover:bg-[#16a34a] text-white px-10 py-4 rounded-full shadow-lg shadow-green-100 transform active:scale-95 transition-all font-bold text-lg"
             onClick={downloadResult}
             disabled={!baseImage}
             icon={<span className="mr-1">⬇️</span>}
@@ -330,9 +348,8 @@ const App: React.FC = () => {
         </div>
       </div>
       
-      {/* Version Tag */}
       <div className="mt-4 text-[10px] text-[#94a3b8] font-bold tracking-widest uppercase">
-        SignMaster v2.5 • AI Powered
+        SignMaster v2.5 • AI Powered Workflow
       </div>
     </div>
   );
