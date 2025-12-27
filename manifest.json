@@ -1,0 +1,18 @@
+
+{
+  "name": "多重簽名圖像合併工具 - SignMaster Pro",
+  "short_name": "SignMaster",
+  "description": "專業級多重簽名合併工具，支援 AI 智慧識別簽名區域。",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f8fafc",
+  "theme_color": "#2563eb",
+  "icons": [
+    {
+      "src": "https://cdn-icons-png.flaticon.com/512/1160/1160515.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
