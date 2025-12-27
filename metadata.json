@@ -1,0 +1,7 @@
+{
+  "name": "多重簽名圖像合併工具",
+  "description": "A professional-grade multi-signature image merging tool. Upload documents, overlay multiple signatures, and use AI to identify signature placements.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}
