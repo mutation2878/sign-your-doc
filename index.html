@@ -1,23 +1,31 @@
 
 <!DOCTYPE html>
-<html lang="en">
+<html lang="zh-Hant">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SignMaster Pro - Multi-Signature Merger</title>
+    <title>多重簽名圖像合併工具 - SignMaster Pro</title>
     <script src="https://cdn.tailwindcss.com"></script>
-<script type="importmap">
+    <script>
+      // 確保在瀏覽器環境中 process.env 也能運作，避免 Gemini API 讀取錯誤
+      window.process = window.process || { env: {} };
+    </script>
+    <script type="importmap">
 {
   "imports": {
-    "react/": "https://esm.sh/react@^19.2.3/",
-    "react": "https://esm.sh/react@^19.2.3",
-    "@google/genai": "https://esm.sh/@google/genai@^1.34.0",
-    "react-dom/": "https://esm.sh/react-dom@^19.2.3/"
+    "react": "https://esm.sh/react@19.2.3",
+    "react-dom": "https://esm.sh/react-dom@19.2.3",
+    "react-dom/client": "https://esm.sh/react-dom@19.2.3/client",
+    "@google/genai": "https://esm.sh/@google/genai@1.34.0",
+    "react-dom/": "https://esm.sh/react-dom@^19.2.3/",
+    "react/": "https://esm.sh/react@^19.2.3/"
   }
 }
 </script>
 </head>
 <body class="bg-slate-50 text-slate-900">
     <div id="root"></div>
+    <!-- 這是關鍵：必須引入 index.tsx，Vite 才能找到並編譯您的 React 程式碼 -->
+    <script type="module" src="./index.tsx"></script>
 </body>
 </html>
